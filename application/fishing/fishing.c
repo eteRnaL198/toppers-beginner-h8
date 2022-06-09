@@ -61,13 +61,11 @@
 #include "device.h"
 #include "fishing.h"
 
+volatile int is_running = 0;
+
 // LCD表示用
 static char const raddec[] = "0123456789"; /* 数字を表す文字コード*/
 static char lcdbuf[32]; /* 1行は16文字表示可能、2行分のバッファ */
-
-// プロトタイプ宣言
-int move_fish(int l);
-void clear_buf();
 
 /*
  *  タイマ用タスク
@@ -77,22 +75,24 @@ void timer_task(VP_INT exinf)
 	SYSTIM base_time, current_time;
 	TMO tmout = 0;
 	UB pow_led = OFF;
+	int t_s, t_qs;
 
 	syslog_1(LOG_NOTICE, "Sample1 timer task starts (exinf = %d).", exinf);
 	get_tim(&base_time);	/* 現在時間の取り出し */
 	for (;;) {
 		tslp_tsk(tmout);	/* TICK待ち */
+		t_s = current_time / T_1SEC; // 1sに変換
+		t_qs = current_time / T_TICK; // 1/4sに変換
 
 		/* 奇数秒で電源LEDオン */
-
-		if ((base_time / T_1SEC) & 0x01) {
+		if (t_s & 0x01) {
 			pow_led = ON;
 		} else {
 			pow_led = OFF;
 		}
 		// set_led(POW_LED, pow_led);
 
-		display_time((UW) base_time);	/* base_timeのLCD表示を追加 */
+		display_time(t_s);	/* base_timeのLCD表示を追加 */
 
 		base_time += T_TICK;
 		get_tim(&current_time);
@@ -125,12 +125,14 @@ void entry_task(VP_INT exinf)
 		tslp_tsk(500);
 		sw = get_key(START_SW);
 		if (start_sw != sw) {
-			syslog_1(LOG_NOTICE, "Change START_SW = 0x%x.",
-				 (int)sw);
-			if (sw == ON)
+			syslog_1(LOG_NOTICE, "Change START_SW = 0x%x.",(int)sw);
+			if (sw == ON) {
 				time_led = ON;
-			else
+				is_running = 1;
+			} else {
 				time_led = OFF;
+				is_running = 0;
+			}
 			start_sw = sw;
 		}
 		// set_led(TIMER_LED, time_led);	/* タイマLEDの設定 */
@@ -143,7 +145,7 @@ void entry_task(VP_INT exinf)
  * 時間を表示する
  * arg1:時間
  */
-void display_time(UW time)
+void display_time(int t_s)
 {
 	/* １行目は左側から"Time"と表示する */
 	lcdbuf[5] = 'J';
@@ -155,12 +157,13 @@ void display_time(UW time)
 	// 	time /= 10;
 	// 	i--;
 	// } while (time != 0);
+	draw_fish(16);
 
 	/* バッファに記憶された文字をLCD表示（２行表示） */
 	display_lcd(2, lcdbuf);
 }
 
-int clear_buf() {
+void clear_buf() {
 	/* バッファにはスペースの文字コードを入れておく */
 	int i;
 	for (i = 0; i < 32; i++) {
@@ -168,7 +171,7 @@ int clear_buf() {
 	}
 }
 
-void move_fish(int l) {
+void draw_fish(int l) {
 
 	// <゜)<
 	lcdbuf[l] = 0x3c;
