@@ -65,15 +65,21 @@
 #define T_TICK              250     /* 実行周期 250ms */
 #define T_1SEC              1000    /* タイマー上の１秒 */
 
+
 /*
  *  関数のプロトタイプ宣言
  */
 #ifndef _MACRO_ONLY
 
+typedef struct {
+  int x;
+} Fish;
+
 extern void entry_task(VP_INT exinf);
 extern void timer_task(VP_INT exinf);
-extern void display_time(int time);
-extern void draw_fish(int l);
+extern void move_fish(int time, Fish *fish);
+extern void draw_fish(Fish *fish);
 extern void clear_buf();
+
 
 #endif /* _MACRO_ONLY */

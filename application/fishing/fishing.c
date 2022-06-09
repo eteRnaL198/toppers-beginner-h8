@@ -79,6 +79,10 @@ void timer_task(VP_INT exinf)
 
 	syslog_1(LOG_NOTICE, "Sample1 timer task starts (exinf = %d).", exinf);
 	get_tim(&base_time);	/* 現在時間の取り出し */
+
+	Fish fish1_data = {31};
+	Fish *fish1 = &fish1_data;
+
 	for (;;) {
 		tslp_tsk(tmout);	/* TICK待ち */
 		t_s = current_time / T_1SEC; // 1sに変換
@@ -86,13 +90,13 @@ void timer_task(VP_INT exinf)
 
 		/* 奇数秒で電源LEDオン */
 		if (t_s & 0x01) {
-			pow_led = ON;
+			// pow_led = ON;
 		} else {
 			pow_led = OFF;
 		}
-		// set_led(POW_LED, pow_led);
+		set_led(POW_LED, pow_led);
 
-		display_time(t_s);	/* base_timeのLCD表示を追加 */
+		move_fish(t_s, fish1);
 
 		base_time += T_TICK;
 		get_tim(&current_time);
@@ -114,9 +118,8 @@ void entry_task(VP_INT exinf)
 	syslog_1(LOG_NOTICE, "Sample entry task starts (exinf = %d).", exinf);
 	initial_key();		/* キーの初期化 */
 	initial_led();		/* LEDの初期化 */
-	clear_buf();			// バッファをスペースで埋める
-
-	initial_lcd();		/* LCDの初期化を追加 */
+	initial_lcd();		/* LCDの初期化 */
+	clear_buf();
 
 	start_sw = get_key(START_SW);	/* 現在のタイマ起動SWの取り込み */
 	act_tsk(TIMER_TASK);	/* タイマータスクの起動 */
@@ -127,7 +130,7 @@ void entry_task(VP_INT exinf)
 		if (start_sw != sw) {
 			syslog_1(LOG_NOTICE, "Change START_SW = 0x%x.",(int)sw);
 			if (sw == ON) {
-				time_led = ON;
+				// time_led = ON;
 				is_running = 1;
 			} else {
 				time_led = OFF;
@@ -135,7 +138,7 @@ void entry_task(VP_INT exinf)
 			}
 			start_sw = sw;
 		}
-		// set_led(TIMER_LED, time_led);	/* タイマLEDの設定 */
+		set_led(TIMER_LED, time_led);	/* タイマLEDの設定 */
 	}
 }
 
@@ -144,20 +147,23 @@ void entry_task(VP_INT exinf)
 /*
  * 時間を表示する
  * arg1:時間
+ * arg2:魚へのポインタ
  */
-void display_time(int t_s)
-{
-	/* １行目は左側から"Time"と表示する */
-	lcdbuf[5] = 'J';
-
-	/* 右側から３番目の列から１桁ずつ数字の文字コードを埋めていく */
-	// i = 29;
-	// do {
-	// 	lcdbuf[i] = raddec[time % 10];
-	// 	time /= 10;
-	// 	i--;
-	// } while (time != 0);
-	draw_fish(16);
+void move_fish(int t_s, Fish *fish) {
+	UB pow_led = OFF;
+	if(is_running) {
+		clear_buf();
+		int bait_x = 5;
+		lcdbuf[bait_x] = 'J'; // 餌
+		if(fish->x+16 == bait_x) {
+			pow_led = ON;
+		} else {
+			pow_led = OFF;
+			fish->x--;
+		}
+		set_led(POW_LED, pow_led);
+		draw_fish(fish);
+	}
 
 	/* バッファに記憶された文字をLCD表示（２行表示） */
 	display_lcd(2, lcdbuf);
@@ -171,19 +177,12 @@ void clear_buf() {
 	}
 }
 
-void draw_fish(int l) {
-
+void draw_fish(Fish *fish) {
 	// <゜)<
-	lcdbuf[l] = 0x3c;
-	lcdbuf[l+1] = 0xdf;
-	lcdbuf[l+2] = 0x29;
-	lcdbuf[l+3] = 0x3c;
-
-	// <゜)<
-	// lcdbuf[19] = 0x3c; 
-	// lcdbuf[20] = 0xdf;
-	// lcdbuf[21] = 0x29; 
-	// lcdbuf[22] = 0x3c;
+	lcdbuf[fish->x] = 0x3c;
+	lcdbuf[fish->x+1] = 0xdf;
+	lcdbuf[fish->x+2] = 0x29;
+	lcdbuf[fish->x+3] = 0x3c;
 
 	// >(@>
 	// lcdbuf[25] = 0x3e; 
@@ -195,7 +194,7 @@ void draw_fish(int l) {
 
 // タスク
 // 魚
-	// 名前・報酬・難易度
+	// 名前・座標・報酬・難易度
 	// 動かす・食べる
 	// 逃がす
 // 餌
@@ -211,6 +210,10 @@ void draw_fish(int l) {
 	// 魚が餌を食べてなかったら逃げる
 //TODO タイムアウト付きのイベントフラグを立てる
 	// 制限時間内にスイッチが押される(イベント発生)か判定する
+
+// 画面
+	// 釣る
+	// 魚GET・逃げる
 
 // TODO 餌代を毎回減らす
 // TODO 餌の値段を上げると良い魚が来るが、難易度は上がる
