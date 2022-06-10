@@ -67,19 +67,17 @@
 
 
 /*
- *  関数のプロトタイプ宣言
+ *  型宣言
  */
 #ifndef _MACRO_ONLY
 
 typedef struct {
   int x;
+  int direction;
+  int level;
 } Fish;
 
 extern void entry_task(VP_INT exinf);
 extern void timer_task(VP_INT exinf);
-extern void move_fish(int time, Fish *fish);
-extern void draw_fish(Fish *fish);
-extern void clear_buf();
-
 
 #endif /* _MACRO_ONLY */

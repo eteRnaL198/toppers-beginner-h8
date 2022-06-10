@@ -80,7 +80,7 @@ void timer_task(VP_INT exinf)
 	syslog_1(LOG_NOTICE, "Sample1 timer task starts (exinf = %d).", exinf);
 	get_tim(&base_time);	/* 現在時間の取り出し */
 
-	Fish fish1_data = {31};
+	Fish fish1_data = {31, -1, 1};
 	Fish *fish1 = &fish1_data;
 
 	for (;;) {
@@ -114,6 +114,7 @@ void entry_task(VP_INT exinf)
 {
 	UB start_sw, sw;
 	UB time_led = OFF;
+	UB up_sw_past, up_sw_current;
 
 	syslog_1(LOG_NOTICE, "Sample entry task starts (exinf = %d).", exinf);
 	initial_key();		/* キーの初期化 */
@@ -139,13 +140,18 @@ void entry_task(VP_INT exinf)
 			start_sw = sw;
 		}
 		set_led(TIMER_LED, time_led);	/* タイマLEDの設定 */
+
+		// スイッチ2がオンになったら釣り上げる
+		up_sw_current = get_key(UP_SW);
+		if(up_sw_current != up_sw_past && up_sw_current == ON) {
+			land();
+		}
+		up_sw_past = up_sw_current;
 	}
 }
 
-/* 以下、LCD表示のために追加 */
-
 /*
- * 時間を表示する
+ * 魚を動かす
  * arg1:時間
  * arg2:魚へのポインタ
  */
@@ -155,11 +161,14 @@ void move_fish(int t_s, Fish *fish) {
 		clear_buf();
 		int bait_x = 5;
 		lcdbuf[bait_x] = 'J'; // 餌
-		if(fish->x+16 == bait_x) {
-			pow_led = ON;
+		if(fish->x == bait_x+16) {
+			// pow_led = ON;
+			eat();
+			fish->x = 31;
+			// pow_led = OFF;
 		} else {
 			pow_led = OFF;
-			fish->x--;
+			fish->x += fish->direction;
 		}
 		set_led(POW_LED, pow_led);
 		draw_fish(fish);
@@ -178,48 +187,92 @@ void clear_buf() {
 }
 
 void draw_fish(Fish *fish) {
-	// <゜)<
-	lcdbuf[fish->x] = 0x3c;
-	lcdbuf[fish->x+1] = 0xdf;
-	lcdbuf[fish->x+2] = 0x29;
-	lcdbuf[fish->x+3] = 0x3c;
+	// 加速度によって変える
+	if(fish->direction == -1) {
+		// <゜))<
+		lcdbuf[fish->x] = 0x3c;
+		lcdbuf[fish->x+1] = 0xdf;
+		lcdbuf[fish->x+2] = 0x29;
+		lcdbuf[fish->x+3] = 0x29;
+		lcdbuf[fish->x+4] = 0x3c;
+	} else {
+		// >((゜>
+		lcdbuf[fish->x-4] = 0x3e; 
+		lcdbuf[fish->x-3] = 0x28;
+		lcdbuf[fish->x-2] = 0x28;
+		// lcdbuf[fish->x-1] = 0xf8; // x
+		lcdbuf[fish->x-1] = 0xdf; // ゜
+		lcdbuf[fish->x] = 0x3e;
+		// TODO 上の行にはみ出さないように
+	}
+}
 
-	// >(@>
-	// lcdbuf[25] = 0x3e; 
-	// lcdbuf[26] = 0x28;
-	// lcdbuf[27] = 0x40; 
-	// lcdbuf[28] = 0x3e;
+void eat() {
+	UB pow_led = ON;
+	set_led(POW_LED, pow_led);
+	VP_INT *tmp;
+	ER result = trcv_dtq(LAND_DTQ, tmp, 1000);
+	if(result == E_OK) {
+		syslog_0(LOG_NOTICE, "I'm caught...");
+	} else {
+		syslog_0(LOG_NOTICE, "Bye!");
+	}
+}
+
+void land() {
+	ER result = tsnd_dtq(LAND_DTQ, 1, 0);
+	if(result != E_OK) {
+		syslog_0(LOG_NOTICE, "Miss!");
+	}
 }
 
 
-// タスク
-// 魚
-	// 名前・座標・報酬・難易度
-	// 動かす・食べる
-	// 逃がす
-// 餌
-	// 安い・高い
-	// 変更
-	// 上げる
-// お金
-	// 減らす・増やす
+/* メモ
 
-// TODO 周期ハンドラを作成してタスクを呼び出す
-	// 周期的に魚を動かす
-// TODO 餌を上げるとメールを送信する
-	// 魚が餌を食べてなかったら逃げる
-//TODO タイムアウト付きのイベントフラグを立てる
-	// 制限時間内にスイッチが押される(イベント発生)か判定する
+- 魚
+	- 名前・座標・報酬・難易度
+  - 動かす・食べる
+  - 逃がす
+- 餌
+	- 安い・高い
+	- 変更
+	- 上げる
+- お金
+	- 減らす・増やす
 
-// 画面
-	// 釣る
-	// 魚GET・逃げる
+周期ハンドラを作成してタスクを呼び出す
+- 周期的に魚を動かす
+	- 餌を上げた時
+		- 上げた瞬間データを渡す(タイムアウトあり)
+			- データキュー領域のサイズは0で同期させる
+			- 送信できたら釣れる
+			- できなかったら逃げられる
+		- 魚サイド
+			- 餌を食べたら受信待ち(タイムアウトあり)
+			- 受信できたら釣られる
+			- 受信できなかったら逃げる
 
-// TODO 餌代を毎回減らす
-// TODO 餌の値段を上げると良い魚が来るが、難易度は上がる
-// TODO スイッチ操作で餌の入れ替え
-	// 	一旦魚は逃げる
-	//  お金の操作
-// TODO 魚は餌に近づくようにする
-	// 早く上げると逃げる
-// TODO 魚を何種類か作成して、それぞれの魚の難易度・報酬を設定する
+
+- 画面管理
+	- イベントフラグで対応する画面表示
+	- 画面
+		- 釣る
+		- 魚GET・逃げる
+		- 設定画面
+			- 3をオン
+			-	餌の種類変える
+			- お金見れる
+
+- 餌代を毎回減らす
+- 餌の値段を上げると良い魚が来るが、難易度は上がる
+- スイッチ操作で餌の入れ替え
+	- 一旦魚は逃げる
+	- お金の操作
+魚は餌に近づくようにする
+	早く上げると逃げる
+魚を何種類か作成して、それぞれの魚の難易度・報酬を設定する
+
+1対1のメッセージはデータで送る
+1対多 or 多対多のメッセージは共有変数にする
+
+*/
