@@ -61,111 +61,111 @@
 #include "device.h"
 #include "fishing.h"
 
-volatile int is_running = 0;
 
 // LCD表示用
 static char const raddec[] = "0123456789"; /* 数字を表す文字コード*/
-static char lcdbuf[32]; /* 1行は16文字表示可能、2行分のバッファ */
+static char lcdbuf[32] = ""; /* 1行は16文字表示可能、2行分のバッファ */
+
+volatile int is_play = 0;
+volatile Fish fish1_data = {31, -1, 1};
+volatile Fish *fish1 = &fish1_data;
+volatile UB up_sw_past, up_sw_current;
+volatile UB land_sw_past, land_sw_current;
+
 
 /*
- *  タイマ用タスク
+ *  初期化タスク
  */
-void timer_task(VP_INT exinf)
-{
-	SYSTIM base_time, current_time;
-	TMO tmout = 0;
-	UB pow_led = OFF;
-	int t_s, t_qs;
-
-	syslog_1(LOG_NOTICE, "Sample1 timer task starts (exinf = %d).", exinf);
-	get_tim(&base_time);	/* 現在時間の取り出し */
-
-	Fish fish1_data = {31, -1, 1};
-	Fish *fish1 = &fish1_data;
-
-	for (;;) {
-		tslp_tsk(tmout);	/* TICK待ち */
-		t_s = current_time / T_1SEC; // 1sに変換
-		t_qs = current_time / T_TICK; // 1/4sに変換
-
-		/* 奇数秒で電源LEDオン */
-		if (t_s & 0x01) {
-			// pow_led = ON;
-		} else {
-			pow_led = OFF;
-		}
-		set_led(POW_LED, pow_led);
-
-		move_fish(t_s, fish1);
-
-		base_time += T_TICK;
-		get_tim(&current_time);
-		tmout = base_time - current_time;
-		if (tmout < 0)
-			tmout = 0;
-	}
-}
-
-/*
- *  メインタスク
- *  (スイッチプロセス)
- */
-void entry_task(VP_INT exinf)
+void init_task()
 {
 	UB start_sw, sw;
-	UB time_led = OFF;
-	UB up_sw_past, up_sw_current;
+	UB timer_led = OFF;
 
-	syslog_1(LOG_NOTICE, "Sample entry task starts (exinf = %d).", exinf);
 	initial_key();		/* キーの初期化 */
 	initial_led();		/* LEDの初期化 */
 	initial_lcd();		/* LCDの初期化 */
-	clear_buf();
 
-	start_sw = get_key(START_SW);	/* 現在のタイマ起動SWの取り込み */
-	act_tsk(TIMER_TASK);	/* タイマータスクの起動 */
+	clear_both_lines();
+	draw_rod();
 
+	start_sw = get_key(START_SW);
+	up_sw_past = get_key(UP_SW);
+	land_sw_past = get_key(LAND_SW);
+
+	// TODO 画面ハンドラ呼び出し
 	for (;;) {
 		tslp_tsk(500);
 		sw = get_key(START_SW);
 		if (start_sw != sw) {
 			syslog_1(LOG_NOTICE, "Change START_SW = 0x%x.",(int)sw);
 			if (sw == ON) {
-				// time_led = ON;
-				is_running = 1;
+				// timer_led = ON;
+				is_play = 1;
 			} else {
-				time_led = OFF;
-				is_running = 0;
+				timer_led = OFF;
+				is_play = 0;
 			}
 			start_sw = sw;
 		}
-		set_led(TIMER_LED, time_led);	/* タイマLEDの設定 */
+		set_led(TIMER_LED, timer_led);	/* タイマLEDの設定 */
 
-		// スイッチ2がオンになったら釣り上げる
-		up_sw_current = get_key(UP_SW);
-		if(up_sw_current != up_sw_past && up_sw_current == ON) {
-			land();
-		}
-		up_sw_past = up_sw_current;
 	}
 }
 
 /*
- * 魚を動かす
- * arg1:時間
- * arg2:魚へのポインタ
+ *  魚タスク
  */
-void move_fish(int t_s, Fish *fish) {
+void fish_task() {
+	move_fish(fish1);
+	ext_tsk();
+}
+
+/*
+ * 釣り人タスク
+ */
+void angler_task() {
+	land();
+	ext_tsk();
+}
+
+
+/*
+ *  魚ハンドラ
+ */
+void fish_handler() {
+	iact_tsk(FISH_TASK);
+}
+
+/*
+ *  スイッチハンドラ
+ *  スイッチ4がオンになったら釣り上げる
+ */
+void switch_handler() {
+	up_sw_current = get_key(UP_SW);
+	if(up_sw_current != up_sw_past && up_sw_current == ON) {
+		iact_tsk(ANGLER_TASK);
+	}
+	up_sw_past = up_sw_current;
+
+	// land_sw_current = get_key(LAND_SW);
+	// if(land_sw_current != land_sw_past && land_sw_current == ON) {
+	// 	iact_tsk(ANGLER_TASK);
+	// }
+	// land_sw_past = land_sw_current;
+
+}
+
+/*
+ * 魚を動かす
+ * arg1:魚へのポインタ
+ */
+void move_fish(Fish *fish) {
 	UB pow_led = OFF;
-	if(is_running) {
-		clear_buf();
-		int bait_x = 5;
-		lcdbuf[bait_x] = 'J'; // 餌
-		if(fish->x == bait_x+16) {
-			// pow_led = ON;
+	if(is_play) {
+		clear_line(1);
+		if(fish->x == BAIT_X+16) {
 			eat();
 			fish->x = 31;
-			// pow_led = OFF;
 		} else {
 			pow_led = OFF;
 			fish->x += fish->direction;
@@ -174,20 +174,44 @@ void move_fish(int t_s, Fish *fish) {
 		draw_fish(fish);
 	}
 
-	/* バッファに記憶された文字をLCD表示（２行表示） */
-	display_lcd(2, lcdbuf);
+	display_lcd(2, lcdbuf); /* バッファに記憶された文字をLCD表示（２行表示） */
 }
 
-void clear_buf() {
-	/* バッファにはスペースの文字コードを入れておく */
-	int i;
-	for (i = 0; i < 32; i++) {
-		lcdbuf[i] = ' ';
+void eat() {
+	set_led(POW_LED, ON);
+	// sta_cyc(SWITCH_HANDLER); // スイッチハンドラ起動
+	VP_INT *tmp;
+	ER result = trcv_dtq(LAND_DTQ, tmp, 500);
+	// stp_cyc(SWITCH_HANDLER); // スイッチハンドラ停止
+	if(result == E_TMOUT) {
+		syslog_0(LOG_NOTICE, "Missed");
+		draw_msg("Missed");
+	}
+}
+
+void land() {
+	ER result = tsnd_dtq(LAND_DTQ, 1, 0);
+	if(result == E_OK) {
+		syslog_0(LOG_NOTICE, "Get $100!");
+		draw_msg("Get $100!");
+		blink_led(TIMER_LED);
+	} else if(result == E_TMOUT) {
+		syslog_0(LOG_NOTICE, "Too fast!");
+		draw_msg("Too fast!");
+	}
+}
+
+void blink_led(UB led) {
+	SYSTIM current_time;
+	get_tim(&current_time);
+	if((current_time / T_TICK) % 2 == 0) {
+		set_led(led, ON);
+	} else {
+		set_led(led, OFF);
 	}
 }
 
 void draw_fish(Fish *fish) {
-	// 加速度によって変える
 	if(fish->direction == -1) {
 		// <゜))<
 		lcdbuf[fish->x] = 0x3c;
@@ -207,40 +231,78 @@ void draw_fish(Fish *fish) {
 	}
 }
 
-void eat() {
-	UB pow_led = ON;
-	set_led(POW_LED, pow_led);
-	VP_INT *tmp;
-	ER result = trcv_dtq(LAND_DTQ, tmp, 1000);
-	if(result == E_OK) {
-		syslog_0(LOG_NOTICE, "I'm caught...");
-	} else {
-		syslog_0(LOG_NOTICE, "Bye!");
+void draw_rod() {
+	lcdbuf[BAIT_X-4] = 0x5f;
+	lcdbuf[BAIT_X-3] = 0x5f;
+	lcdbuf[BAIT_X-2] = 0x5f;
+	lcdbuf[BAIT_X-1] = 0x2f;
+	lcdbuf[BAIT_X] = 'J'; // 餌
+}
+
+void draw_msg(char *str) {
+	int n = 0;
+	while(str[n] != '\0') n++;
+	int i = 15;
+	while(n > 0) {
+		lcdbuf[i] = str[n-1];
+		n--;
+		i--;
+	}
+	display_lcd(2, lcdbuf); /* バッファに記憶された文字をLCD表示（２行表示） */
+}
+
+void clear_line(int r) {
+	int i;
+	for(i=r*16; i<r*16+16; i++) {
+		lcdbuf[i] = ' ';
 	}
 }
 
-void land() {
-	ER result = tsnd_dtq(LAND_DTQ, 1, 0);
-	if(result != E_OK) {
-		syslog_0(LOG_NOTICE, "Miss!");
-	}
+void clear_both_lines() {
+	clear_line(0);
+	clear_line(1);
 }
 
 
 /* メモ
 
-- 魚
-	- 名前・座標・報酬・難易度
-  - 動かす・食べる
-  - 逃がす
-- 餌
-	- 安い・高い
-	- 変更
-	- 上げる
-- お金
-	- 減らす・増やす
+- スイッチ
+	- 1 画面操作
+		- ホーム→プレイ
+		- その後 メニュー/プレイ
+	- 2 釣り竿トグル 通常/高級
+	- 3 
+	- 4 釣り上げる
+
+- タスク
+	- 画面管理
+		- イベントフラグで対応する画面表示
+		- 画面
+			- 釣る
+			- 魚GET・逃げる
+			- 設定画面
+				-	餌の種類変える
+				- お金見れる
+	- 魚
+		- 名前・座標・レベル
+		- 動く
+		- 食べる
+		- 逃げる
+	- 釣り人(餌)
+		- 餌
+			- 安い/高い (j/J)
+			- 変更
+			- 
+			- 釣り上げる
+		- お金
+			- 餌代払う
+			- 0になったらgame over
+
 
 周期ハンドラを作成してタスクを呼び出す
+- 魚ハンドラ → 魚タスク → 食べる → スイッチハンドラ → 逃げる/釣られる
+- スイッチハンドラ → 釣り人タスク → 釣る
+
 - 周期的に魚を動かす
 	- 餌を上げた時
 		- 上げた瞬間データを渡す(タイムアウトあり)
@@ -248,20 +310,12 @@ void land() {
 			- 送信できたら釣れる
 			- できなかったら逃げられる
 		- 魚サイド
-			- 餌を食べたら受信待ち(タイムアウトあり)
+			- 餌を食べたら
+				- 受信待ち(タイムアウトあり)
+				- 高速スイッチ判定
 			- 受信できたら釣られる
 			- 受信できなかったら逃げる
 
-
-- 画面管理
-	- イベントフラグで対応する画面表示
-	- 画面
-		- 釣る
-		- 魚GET・逃げる
-		- 設定画面
-			- 3をオン
-			-	餌の種類変える
-			- お金見れる
 
 - 餌代を毎回減らす
 - 餌の値段を上げると良い魚が来るが、難易度は上がる
@@ -272,7 +326,17 @@ void land() {
 	早く上げると逃げる
 魚を何種類か作成して、それぞれの魚の難易度・報酬を設定する
 
-1対1のメッセージはデータで送る
-1対多 or 多対多のメッセージは共有変数にする
+
+- 工夫
+	- メッセージの管理
+		- 1対1のメッセージはデータで送る
+		- 1対多 or 多対多のメッセージは共有変数にして、セマフォで排他制御する
+	- 周期ハンドラで呼び出し
+		- 通常はほどよく判定
+		- 食べた瞬間高速で判定するようにした
+	- 釣るスイッチをセマフォで排他制御
+		- 通常周期と高速周期の2つで値を見る
+	- 再描画を減らした
+		- 行を指定して消す関数を作った
 
 */

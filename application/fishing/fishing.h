@@ -47,8 +47,9 @@
 /*
  *  タスク優先度の設定
  */
-#define DEFAULT_MAIN_PRIORITY       8
-#define TIMER_PRIORITY              9
+#define DEFAULT_MAIN_PRIORITY      8
+#define FISH_PRIORITY              9
+#define ANGLER_PRIORITY            9
 
 /*
  *  ターゲットに依存する可能性のある定数の定義
@@ -67,6 +68,14 @@
 
 
 /*
+ * 画面番号の定義
+ */
+#define START_SCREEN        0
+#define PLAY_SCREEN         1
+#define MENU_SCREEN         2
+
+#define BAIT_X  4
+/*
  *  型宣言
  */
 #ifndef _MACRO_ONLY
@@ -77,7 +86,12 @@ typedef struct {
   int level;
 } Fish;
 
-extern void entry_task(VP_INT exinf);
-extern void timer_task(VP_INT exinf);
+extern void init_task();
+extern void fish_task();
+extern void angler_task();
+extern void fish_handler();
+extern void switch_handler();
+
+extern void move_fish(Fish*);
 
 #endif /* _MACRO_ONLY */
