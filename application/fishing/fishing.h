@@ -89,9 +89,20 @@ typedef struct {
 extern void init_task();
 extern void fish_task();
 extern void angler_task();
+
 extern void fish_handler();
+extern void angler_handler();
+extern void screen_handler();
 extern void switch_handler();
 
-extern void move_fish(Fish*);
+void move_fish(Fish*);
+void eat();
+void land();
+void blink_led(UB);
+void draw_fish(Fish*);
+void draw_rod();
+void draw_msg(char*);
+void clear_display();
+
 
 #endif /* _MACRO_ONLY */

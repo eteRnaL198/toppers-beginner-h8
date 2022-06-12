@@ -69,78 +69,83 @@ static char lcdbuf[32] = ""; /* 1行は16文字表示可能、2行分のバッ�
 volatile int is_play = 0;
 volatile Fish fish1_data = {31, -1, 1};
 volatile Fish *fish1 = &fish1_data;
+volatile UB start_sw_past, start_sw_current;
 volatile UB up_sw_past, up_sw_current;
 volatile UB land_sw_past, land_sw_current;
 
 
-/*
- *  初期化タスク
- */
-void init_task()
-{
-	UB start_sw, sw;
+/* ----------------------------
+	タスク
+ ---------------------------- */
+void init_task() {
 	UB timer_led = OFF;
 
 	initial_key();		/* キーの初期化 */
 	initial_led();		/* LEDの初期化 */
 	initial_lcd();		/* LCDの初期化 */
 
-	clear_both_lines();
-	draw_rod();
+	clear_display();
 
-	start_sw = get_key(START_SW);
+	start_sw_past = get_key(START_SW);
 	up_sw_past = get_key(UP_SW);
 	land_sw_past = get_key(LAND_SW);
 
 	// TODO 画面ハンドラ呼び出し
 	for (;;) {
 		tslp_tsk(500);
-		sw = get_key(START_SW);
-		if (start_sw != sw) {
-			syslog_1(LOG_NOTICE, "Change START_SW = 0x%x.",(int)sw);
-			if (sw == ON) {
-				// timer_led = ON;
-				is_play = 1;
-			} else {
-				timer_led = OFF;
-				is_play = 0;
-			}
-			start_sw = sw;
-		}
 		set_led(TIMER_LED, timer_led);	/* タイマLEDの設定 */
-
 	}
 }
 
-/*
- *  魚タスク
- */
 void fish_task() {
-	move_fish(fish1);
+	if(is_play) {
+		int isEat = move_fish(fish1);
+		if(isEat) eat();
+		draw_fish(fish1);
+	}
 	ext_tsk();
 }
 
-/*
- * 釣り人タスク
- */
 void angler_task() {
-	land();
+	if(is_play) {
+		land();
+	}
 	ext_tsk();
 }
 
 
-/*
- *  魚ハンドラ
- */
+
+/* ----------------------------
+	ハンドラ
+ ---------------------------- */
 void fish_handler() {
 	iact_tsk(FISH_TASK);
 }
 
-/*
- *  スイッチハンドラ
- *  スイッチ4がオンになったら釣り上げる
- */
+void angler_handler() {
+	draw_rod();
+}
+
+void screen_handler() {
+	display_lcd(2, lcdbuf);
+	clear_display();
+}
+
 void switch_handler() {
+	// スイッチ1: 画面遷移
+	start_sw_current = get_key(START_SW);
+	if(start_sw_current != start_sw_past) {
+		if(start_sw_current == ON) {
+			syslog_0(LOG_NOTICE, "Start the game");
+			is_play = 1;
+		} else {
+			is_play = 0;
+			syslog_0(LOG_NOTICE, "Pause the game");
+		}
+	}
+	start_sw_past = start_sw_current;
+
+  // スイッチ2: 釣り上げる
 	up_sw_current = get_key(UP_SW);
 	if(up_sw_current != up_sw_past && up_sw_current == ON) {
 		iact_tsk(ANGLER_TASK);
@@ -155,48 +160,39 @@ void switch_handler() {
 
 }
 
-/*
- * 魚を動かす
- * arg1:魚へのポインタ
- */
-void move_fish(Fish *fish) {
-	UB pow_led = OFF;
-	if(is_play) {
-		clear_line(1);
-		if(fish->x == BAIT_X+16) {
-			eat();
-			fish->x = 31;
-		} else {
-			pow_led = OFF;
-			fish->x += fish->direction;
-		}
-		set_led(POW_LED, pow_led);
-		draw_fish(fish);
-	}
 
-	display_lcd(2, lcdbuf); /* バッファに記憶された文字をLCD表示（２行表示） */
+
+/* ----------------------------
+	サブルーチン
+ ---------------------------- */
+int move_fish(Fish *fish) {
+	int isEat = 0;
+	if(fish->x == BAIT_X+16) {
+		isEat = 1;
+		fish->x = 31;
+	} else {
+		fish->x += fish->direction;
+	}
+	set_led(POW_LED, OFF);
+	return isEat;
 }
 
 void eat() {
 	set_led(POW_LED, ON);
-	// sta_cyc(SWITCH_HANDLER); // スイッチハンドラ起動
 	VP_INT *tmp;
 	ER result = trcv_dtq(LAND_DTQ, tmp, 500);
-	// stp_cyc(SWITCH_HANDLER); // スイッチハンドラ停止
 	if(result == E_TMOUT) {
-		syslog_0(LOG_NOTICE, "Missed");
-		draw_msg("Missed");
+		draw_msg("Miss..");
 	}
+	set_led(POW_LED, OFF);
 }
 
 void land() {
-	ER result = tsnd_dtq(LAND_DTQ, 1, 0);
+	ER result = tsnd_dtq(LAND_DTQ, (VP_INT)1, 0);
 	if(result == E_OK) {
-		syslog_0(LOG_NOTICE, "Get $100!");
 		draw_msg("Get $100!");
 		blink_led(TIMER_LED);
 	} else if(result == E_TMOUT) {
-		syslog_0(LOG_NOTICE, "Too fast!");
 		draw_msg("Too fast!");
 	}
 }
@@ -248,23 +244,26 @@ void draw_msg(char *str) {
 		n--;
 		i--;
 	}
-	display_lcd(2, lcdbuf); /* バッファに記憶された文字をLCD表示（２行表示） */
 }
 
-void clear_line(int r) {
+void clear_display() {
 	int i;
-	for(i=r*16; i<r*16+16; i++) {
+	for(i=0; i<32; i++) {
 		lcdbuf[i] = ' ';
 	}
 }
 
-void clear_both_lines() {
-	clear_line(0);
-	clear_line(1);
-}
 
 
 /* メモ
+
+// TODO
+[] タスクorハンドラに集めてネストを減らす
+[] 連れたらLED点滅させる
+[] お金
+[] 餌レベル
+[] 画面遷移
+[] 魚挙動
 
 - スイッチ
 	- 1 画面操作
@@ -336,7 +335,7 @@ void clear_both_lines() {
 		- 食べた瞬間高速で判定するようにした
 	- 釣るスイッチをセマフォで排他制御
 		- 通常周期と高速周期の2つで値を見る
-	- 再描画を減らした
+	- 再描画を減らした ← 意味あるかは微妙
 		- 行を指定して消す関数を作った
 
 */
