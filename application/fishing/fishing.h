@@ -67,14 +67,13 @@
 #define T_1SEC              1000    /* タイマー上の１秒 */
 
 
-/*
- * 画面番号の定義
- */
-#define START_SCREEN        0
-#define PLAY_SCREEN         1
-#define MENU_SCREEN         2
-
 #define BAIT_X  4
+
+#define START 0
+#define PLAY 1
+#define MENU 2
+#define OVER 3
+
 /*
  *  型宣言
  */
@@ -95,7 +94,7 @@ extern void angler_handler();
 extern void screen_handler();
 extern void switch_handler();
 
-void move_fish(Fish*);
+int move_fish(Fish*);
 void eat();
 void land();
 void blink_led(UB);
