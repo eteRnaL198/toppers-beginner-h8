@@ -67,9 +67,9 @@ static char const raddec[] = "0123456789"; /* 数字を表す文字コード*/
 static char lcdbuf[32] = ""; /* 1行は16文字表示可能、2行分のバッファ */
 
 volatile int screen = START;
+volatile int needLand = 0;
 volatile Fish fish1_data = {31, -1, 1};
 volatile Fish *fish1 = &fish1_data;
-volatile UB start_sw_past, start_sw_current;
 volatile UB up_sw_past, up_sw_current;
 volatile UB land_sw_past, land_sw_current;
 
@@ -84,21 +84,34 @@ void init_task() {
 
 	clear_display();
 
-	start_sw_past = get_key(START_SW);
 	up_sw_past = get_key(UP_SW);
 	land_sw_past = get_key(LAND_SW);
 }
 
 void fish_task() {
-	int isEat = move_fish(fish1);
-	if(isEat) eat();
+	int needEat = move_fish(fish1);
+	if(needEat) eat();
 	draw_fish(fish1);
+	set_flg(COMPLETE_FLG, 0x01);
 	ext_tsk();
 }
 
 void angler_task() {
-	land();
+	draw_rod();
+	set_led(TIMER_LED, OFF);
+	if(needLand) {
+		land();
+		needLand = 0;
+	}
+	set_flg(COMPLETE_FLG, 0x02);
 	ext_tsk();
+}
+
+void display_task() {
+	int tmp;
+	wai_flg(COMPLETE_FLG, 0x03, TWF_ANDW, &tmp);
+	display_lcd(2, lcdbuf);
+	clear_display();
 }
 
 
@@ -106,39 +119,26 @@ void angler_task() {
 /* ----------------------------
 	ハンドラ
  ---------------------------- */
-void fish_handler() {
-	if(screen == PLAY) iact_tsk(FISH_TASK);
-}
-
-void angler_handler() {
-	if(screen == PLAY) {
-		draw_rod();
-		set_led(TIMER_LED, OFF);
-	}
-}
-
 void screen_handler() {
-	display_lcd(2, lcdbuf);
-	clear_display();
+	iact_tsk(DISPLAY_TASK);
+	if(screen == PLAY) {
+		iact_tsk(FISH_TASK);
+		iact_tsk(ANGLER_TASK);
+	}
 }
 
 void switch_handler() {
 	// スイッチ1: 画面制御
-	start_sw_current = get_key(START_SW);
-	if(start_sw_current != start_sw_past) {
-		if(start_sw_current == ON) {
-			syslog_0(LOG_NOTICE, "Start the game");
-			screen = PLAY;
-		} else {
-			screen = MENU;
-			syslog_0(LOG_NOTICE, "Pause the game");
-		}
+	if(get_key(START_SW) == ON) {
+		screen = PLAY;
+	} else {
+		screen = MENU;
 	}
-	start_sw_past = start_sw_current;
 
   // スイッチ2: 釣り上げる
 	up_sw_current = get_key(UP_SW);
 	if(screen == PLAY && up_sw_current != up_sw_past && up_sw_current == ON) {
+		needLand = 1;
 		iact_tsk(ANGLER_TASK);
 	}
 	up_sw_past = up_sw_current;
@@ -173,7 +173,7 @@ void eat() {
 	VP_INT *tmp;
 	ER result = trcv_dtq(LAND_DTQ, tmp, 500);
 	if(result == E_TMOUT) {
-		draw_msg("Miss..");
+		draw_msg("Miss");
 	}
 	set_led(POW_LED, OFF);
 }
@@ -181,10 +181,10 @@ void eat() {
 void land() {
 	ER result = tsnd_dtq(LAND_DTQ, (VP_INT)1, 0);
 	if(result == E_OK) {
-		draw_msg("Catch! +$5");
+		draw_msg("Catch!");
 		set_led(TIMER_LED, ON);
 	} else if(result == E_TMOUT) {
-		draw_msg("Too fast!");
+		draw_msg("Too early");
 	}
 }
 
@@ -225,6 +225,10 @@ void draw_msg(char *str) {
 		n--;
 		i--;
 	}
+	// while(i > 4) {   // Too early + Miss → Too eMiss にならないように
+	// 	lcdbuf[i] = ' ';
+	// 	i--;
+	// }
 }
 
 void clear_display() {
@@ -241,11 +245,10 @@ void clear_display() {
 // TODO
 [] 画面遷移
 [] お金
+[] too earlyで逃げる
 [] $0でゲームオーバー
 [] 餌レベル
 [] 魚挙動
-[] too fastで逃げる
-[] 釣り竿上げた感出す
 
 - スイッチ
 	- 1 画面操作
@@ -312,10 +315,12 @@ void clear_display() {
 
 
 - 工夫
-	- メッセージの管理
-		- 1対1のメッセージはデータで送る
-		- 1対多 or 多対多のメッセージは共有変数にして、セマフォで排他制御する
-	- 周期ハンドラで呼び出し
+	- データキュー
+		- 魚が餌を食べたら釣られるのを一定時間待つようにした
+	- イベントフラグ
+		- バッファに内容を書き込んでから最後に表示するようにした
+		- 書き込むより先に表示しないように
+	- 周期ハンドラでタスクを呼び出した
 	- 可読性を高めるために
 		- サブルーチンを用いてスッキリ
 		- サブルーチンからの呼び出しは最低限にした

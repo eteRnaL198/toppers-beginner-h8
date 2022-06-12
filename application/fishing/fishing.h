@@ -50,6 +50,7 @@
 #define DEFAULT_MAIN_PRIORITY      8
 #define FISH_PRIORITY              9
 #define ANGLER_PRIORITY            9
+#define DISPLAY_PRIORITY           10
 
 /*
  *  ターゲットに依存する可能性のある定数の定義
@@ -88,9 +89,8 @@ typedef struct {
 extern void init_task();
 extern void fish_task();
 extern void angler_task();
+extern void display_task();
 
-extern void fish_handler();
-extern void angler_handler();
 extern void screen_handler();
 extern void switch_handler();
 
