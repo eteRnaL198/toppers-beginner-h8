@@ -94,6 +94,7 @@ extern void display_task();
 extern void screen_handler();
 extern void switch_handler();
 
+void init_fish(Fish*);
 int move_fish(Fish*);
 void eat();
 void land();

@@ -67,9 +67,12 @@ static char const raddec[] = "0123456789"; /* 数字を表す文字コード*/
 static char lcdbuf[32] = ""; /* 1行は16文字表示可能、2行分のバッファ */
 
 volatile int screen = START;
-volatile int needLand = 0;
-volatile Fish fish1_data = {31, -1, 1};
+volatile int need_land = 0;
+volatile Fish fish1_data = {32, -1, 1};
 volatile Fish *fish1 = &fish1_data;
+volatile Fish fish2_data = {14, 1, 2};
+volatile Fish *fish2 = &fish2_data;
+volatile Fish **act_fish = &fish1;
 volatile UB up_sw_past, up_sw_current;
 volatile UB land_sw_past, land_sw_current;
 
@@ -89,9 +92,12 @@ void init_task() {
 }
 
 void fish_task() {
-	int needEat = move_fish(fish1);
-	if(needEat) eat();
-	draw_fish(fish1);
+	int need_eat = move_fish(*act_fish);
+	if(need_eat) {
+		eat();
+		init_fish(*act_fish);
+	}
+	draw_fish(*act_fish);
 	set_flg(COMPLETE_FLG, 0x01);
 	ext_tsk();
 }
@@ -99,9 +105,10 @@ void fish_task() {
 void angler_task() {
 	draw_rod();
 	set_led(TIMER_LED, OFF);
-	if(needLand) {
+	if(need_land) {
 		land();
-		needLand = 0;
+		init_fish(*act_fish);
+		need_land = 0;
 	}
 	set_flg(COMPLETE_FLG, 0x02);
 	ext_tsk();
@@ -138,7 +145,7 @@ void switch_handler() {
   // スイッチ2: 釣り上げる
 	up_sw_current = get_key(UP_SW);
 	if(screen == PLAY && up_sw_current != up_sw_past && up_sw_current == ON) {
-		needLand = 1;
+		need_land = 1;
 		iact_tsk(ANGLER_TASK);
 	}
 	up_sw_past = up_sw_current;
@@ -156,14 +163,16 @@ void switch_handler() {
 /* ----------------------------
 	サブルーチン
  ---------------------------- */
+void init_fish(Fish *fish) {
+	fish->x = 14;
+	fish->direction = 1;
+	fish = &fish2;
+}
+
 int move_fish(Fish *fish) {
 	int isEat = 0;
-	if(fish->x == BAIT_X+16) {
-		isEat = 1;
-		fish->x = 31;
-	} else {
-		fish->x += fish->direction;
-	}
+	if(fish->x == BAIT_X+16) isEat = 1;
+	else fish->x += fish->direction; // TODO 足すかどうかはランダム
 	set_led(POW_LED, OFF);
 	return isEat;
 }
@@ -191,20 +200,18 @@ void land() {
 void draw_fish(Fish *fish) {
 	if(fish->direction == -1) {
 		// <゜))<
-		lcdbuf[fish->x] = 0x3c;
-		lcdbuf[fish->x+1] = 0xdf;
-		lcdbuf[fish->x+2] = 0x29;
-		lcdbuf[fish->x+3] = 0x29;
-		lcdbuf[fish->x+4] = 0x3c;
-	} else {
+		if(fish->x >= 16) lcdbuf[fish->x] = 0x3c;
+		if(fish->x >= 15) lcdbuf[fish->x+1] = 0xdf;
+		if(fish->x >= 14) lcdbuf[fish->x+2] = 0x29;
+		if(fish->x >= 13) lcdbuf[fish->x+3] = 0x29;
+		if(fish->x >= 12) lcdbuf[fish->x+4] = 0x3c;
+	} else if(fish->direction == 1) {
 		// >((゜>
-		lcdbuf[fish->x-4] = 0x3e; 
-		lcdbuf[fish->x-3] = 0x28;
-		lcdbuf[fish->x-2] = 0x28;
-		// lcdbuf[fish->x-1] = 0xf8; // x
-		lcdbuf[fish->x-1] = 0xdf; // ゜
-		lcdbuf[fish->x] = 0x3e;
-		// TODO 上の行にはみ出さないように
+		if(fish->x >= 20) lcdbuf[fish->x-4] = 0x3e; 
+		if(fish->x >= 19) lcdbuf[fish->x-3] = 0x28;
+		if(fish->x >= 18) lcdbuf[fish->x-2] = 0x28;
+		if(fish->x >= 17) lcdbuf[fish->x-1] = 0xdf;
+		if(fish->x >= 16) lcdbuf[fish->x] = 0x3e;
 	}
 }
 
@@ -225,10 +232,6 @@ void draw_msg(char *str) {
 		n--;
 		i--;
 	}
-	// while(i > 4) {   // Too early + Miss → Too eMiss にならないように
-	// 	lcdbuf[i] = ' ';
-	// 	i--;
-	// }
 }
 
 void clear_display() {
@@ -245,10 +248,9 @@ void clear_display() {
 // TODO
 [] 画面遷移
 [] お金
-[] too earlyで逃げる
 [] $0でゲームオーバー
 [] 餌レベル
-[] 魚挙動
+[] 魚挙動 TODO 足すかどうかはランダム
 
 - スイッチ
 	- 1 画面操作
