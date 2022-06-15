@@ -1,0 +1,215 @@
+kernel_cfg.c kernel_id.h kernel_chk.c: ../../jsp/include/t_stddef.h \
+	../../jsp/systask/logtask.cfg \
+	../../jsp/config/h8/cpu_rename.h \
+	../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/tool_config.h ../../jsp/include/sil.h \
+	../../jsp/config/h8/h8.h ../../jsp/config/h8/cpu_config.h \
+	../../jsp/systask/timer.cfg ../../jsp/config/h8/hw_timer.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/include/s_services.h ../../jsp/include/kernel.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/config/h8/cpu_defs.h \
+	../../jsp/config/h8/hw_serial.cfg \
+	../../jsp/include/t_syslog.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/itron.h ../../jsp/include/t_config.h \
+	fishing.h ../../jsp/include/t_services.h fishing.cfg \
+	../../jsp/systask/serial.cfg 
+kernel_chk.s: ../../jsp/include/t_config.h \
+	../../jsp/kernel/interrupt.h ../../jsp/kernel/jsp_rename.h \
+	../../jsp/include/kernel.h ../../jsp/kernel/queue.h \
+	../../jsp/config/h8/cpu_config.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/include/timer.h ../../jsp/include/itron.h \
+	../../jsp/kernel/semaphore.h ../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/cpu_defs.h ../../jsp/kernel/dataqueue.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/config/h8/cpu_rename.h \
+	../../jsp/kernel/jsp_kernel.h kernel_chk.c \
+	../../jsp/kernel/mempfix.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/config/h8/tool_config.h \
+	../../jsp/include/logtask.h ../../jsp/include/t_syslog.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/kernel/mailbox.h ../../jsp/config/h8/cpu_insn.h \
+	../../jsp/kernel/wait.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/kernel/time_event.h ../../jsp/kernel/task.h \
+	../../jsp/config/h8/h8.h ../../jsp/kernel/exception.h \
+	../../jsp/kernel/eventflag.h ../../jsp/include/t_stddef.h \
+	../../jsp/kernel/cyclic.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h 
+start.o: ../../jsp/config/h8/cpu_config.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/config/h8/start.S ../../jsp/include/t_config.h \
+	../../jsp/config/h8/tool_config.h ../../jsp/config/h8/h8.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/config/h8/cpu_rename.h 
+fishing.o: ../../jsp/include/t_stddef.h ../../jsp/include/serial.h \
+	fishing.c ../../jsp/config/h8/cpu_defs.h \
+	../../jsp/config/h8/tool_defs.h fishing.h \
+	../../jsp/include/t_services.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/itron.h ../../jsp/include/kernel.h \
+	kernel_id.h ../../device/device.h \
+	../../jsp/include/t_syslog.h 
+device.o: ../../jsp/config/h8/cpu_rename.h \
+	../../jsp/include/t_config.h ../../jsp/include/t_syslog.h \
+	../../jsp/include/t_stddef.h ../../jsp/config/h8/cpu_defs.h \
+	../../jsp/include/itron.h ../../jsp/config/h8/tool_config.h \
+	../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/cpu_insn.h ../../device/h8_3069f2.h \
+	../../device/sil_akih8_3069f.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../device/device.c ../../jsp/config/h8/cpu_config.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/include/sil.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/config/h8/h8.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../device/device.h ../../jsp/include/s_services.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h 
+sil_akih8_3069f.o: ../../jsp/include/t_config.h \
+	../../jsp/include/t_stddef.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/include/itron.h ../../jsp/config/h8/cpu_config.h \
+	../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../device/sil_akih8_3069f.h ../../device/h8_3069f2.h \
+	../../jsp/include/sil.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/config/h8/tool_config.h \
+	../../jsp/config/h8/cpu_insn.h \
+	../../jsp/include/s_services.h \
+	../../device/sil_akih8_3069f.c ../../jsp/include/t_syslog.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/config/h8/cpu_defs.h ../../jsp/config/h8/h8.h \
+	../../jsp/config/h8/cpu_rename.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h 
+timer.o: ../../jsp/config/h8/h8.h ../../jsp/include/s_services.h \
+	../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/t_syslog.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/config/h8/cpu_insn.h ../../jsp/include/t_config.h \
+	../../jsp/include/t_services.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/include/t_stddef.h ../../jsp/include/kernel.h \
+	../../jsp/systask/timer.c ../../jsp/include/timer.h \
+	../../jsp/include/serial.h ../../jsp/config/h8/cpu_config.h \
+	../../jsp/config/h8/tool_config.h \
+	../../jsp/config/h8/hw_timer.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/include/sil.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/include/itron.h ../../jsp/config/h8/cpu_defs.h \
+	../../jsp/config/h8/cpu_rename.h 
+serial.o: ../../jsp/include/itron.h ../../jsp/config/h8/cpu_insn.h \
+	kernel_id.h ../../jsp/config/h8/h8.h \
+	../../jsp/config/h8/tool_config.h \
+	../../jsp/include/t_services.h \
+	../../jsp/config/h8/hw_serial.h \
+	../../jsp/config/h8/cpu_defs.h ../../jsp/include/sil.h \
+	../../jsp/include/t_config.h ../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/systask/serial.c ../../jsp/include/t_stddef.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/include/serial.h ../../jsp/include/t_syslog.h \
+	../../jsp/config/h8/cpu_config.h \
+	../../jsp/config/h8/cpu_rename.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/kernel.h ../../jsp/include/s_services.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h 
+logtask.o: ../../jsp/systask/logtask.c \
+	../../jsp/config/h8/tool_config.h \
+	../../jsp/include/t_stddef.h ../../jsp/include/itron.h \
+	../../jsp/include/kernel.h ../../jsp/config/h8/cpu_rename.h \
+	../../jsp/config/h8/cpu_insn.h \
+	../../jsp/config/h8/cpu_config.h \
+	../../jsp/config/h8/tool_defs.h ../../jsp/config/h8/h8.h \
+	../../jsp/include/serial.h ../../jsp/include/logtask.h \
+	../../jsp/config/h8/cpu_defs.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/include/t_syslog.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/include/t_services.h ../../jsp/include/t_config.h 
+log_output.o: ../../jsp/include/kernel.h ../../jsp/include/serial.h \
+	../../jsp/include/itron.h ../../jsp/include/t_stddef.h \
+	../../jsp/config/h8/cpu_defs.h ../../jsp/include/t_syslog.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/library/log_output.c \
+	../../jsp/include/t_services.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h 
+vasyslog.o: ../../jsp/include/t_services.h \
+	../../jsp/include/t_stddef.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stdarg.h \
+	../../jsp/include/itron.h ../../jsp/include/serial.h \
+	../../jsp/config/h8/cpu_defs.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/library/vasyslog.c ../../jsp/include/kernel.h \
+	../../jsp/config/h8/tool_defs.h ../../jsp/include/t_syslog.h 
+t_perror.o: ../../jsp/config/h8/cpu_defs.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/include/t_stddef.h ../../jsp/include/t_syslog.h \
+	../../jsp/include/itron.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/t_services.h \
+	../../jsp/config/h8/tool_defs.h ../../jsp/include/serial.h \
+	../../jsp/library/t_perror.c ../../jsp/include/kernel.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h 
+strerror.o: /usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/t_stddef.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/include/serial.h ../../jsp/include/itron.h \
+	../../jsp/include/t_syslog.h ../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/cpu_defs.h ../../jsp/include/kernel.h \
+	../../jsp/library/strerror.c ../../jsp/include/t_services.h 
+kernel_cfg.o: ../../jsp/kernel/task.h ../../jsp/config/h8/hw_timer.h \
+	../../jsp/include/kernel.h ../../jsp/kernel/jsp_rename.h \
+	../../jsp/config/h8/tool_config.h \
+	../../jsp/config/h8/akih8_3069f/sys_config.h \
+	../../jsp/kernel/mailbox.h \
+	../../jsp/config/h8/akih8_3069f/sys_unrename.h \
+	../../jsp/include/s_services.h \
+	../../jsp/config/h8/akih8_3069f/sys_rename.h \
+	../../jsp/kernel/semaphore.h ../../jsp/include/logtask.h \
+	../../jsp/config/h8/cpu_insn.h ../../jsp/include/t_syslog.h \
+	fishing.h ../../jsp/include/t_services.h \
+	../../jsp/kernel/eventflag.h ../../jsp/kernel/interrupt.h \
+	kernel_id.h ../../jsp/kernel/time_event.h \
+	../../jsp/kernel/exception.h ../../jsp/config/h8/h8.h \
+	../../jsp/include/timer.h kernel_cfg.c \
+	../../jsp/kernel/jsp_unrename.h ../../jsp/include/t_stddef.h \
+	../../jsp/include/itron.h \
+	../../jsp/config/h8/akih8_3069f/h8_3069f.h \
+	../../jsp/kernel/dataqueue.h \
+	../../jsp/config/h8/cpu_rename.h ../../jsp/kernel/cyclic.h \
+	../../jsp/kernel/queue.h ../../jsp/config/h8/tool_defs.h \
+	../../jsp/config/h8/hw_serial.h \
+	../../jsp/config/h8/akih8_3069f/sys_defs.h \
+	../../jsp/include/sil.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/limits.h \
+	../../jsp/config/h8/cpu_defs.h ../../jsp/kernel/mempfix.h \
+	../../jsp/config/h8/cpu_config.h \
+	../../jsp/kernel/jsp_kernel.h ../../jsp/include/serial.h \
+	../../jsp/include/t_config.h ../../jsp/include/kernel_cfg.h \
+	../../jsp/config/h8/cpu_unrename.h \
+	/usr/lib/gcc-lib/h8300-hms/3.0.2/include/stddef.h 

@@ -171,7 +171,6 @@ void hunger_handler() {
 				}
 			} else {
 				screen = OVER;
-				syslog_0(LOG_NOTICE, "over");
 			}
 		}
 	}
