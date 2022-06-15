@@ -65,15 +65,16 @@
 // LCD表示用
 static char const raddec[] = "0123456789"; /* 数字を表す文字コード*/
 static char lcdbuf[32] = ""; /* 1行は16文字表示可能、2行分のバッファ */
+volatile int num_into_char[10] = {0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39};
 
 volatile int screen = START;
 volatile int need_land = 0;
+volatile int pail = 0;
+volatile int total = 0;
+volatile int hunger = HUNGER_MAX;
 volatile Fish fish1_data = {32, -1, 1};
 volatile Fish *fish1 = &fish1_data;
-volatile Fish fish2_data = {14, 1, 2};
-volatile Fish *fish2 = &fish2_data;
 volatile Fish **act_fish = &fish1;
-volatile UB up_sw_past, up_sw_current;
 volatile UB land_sw_past, land_sw_current;
 
 
@@ -87,18 +88,17 @@ void init_task() {
 
 	clear_display();
 
-	up_sw_past = get_key(UP_SW);
 	land_sw_past = get_key(LAND_SW);
 }
 
 void fish_task() {
 	int need_eat = move_fish(*act_fish);
 	if(need_eat) {
-		eat();
+		eat(*act_fish);
 		init_fish(*act_fish);
 	}
 	draw_fish(*act_fish);
-	set_flg(COMPLETE_FLG, 0x01);
+	set_flg(DONE_FLG, 0x01);
 	ext_tsk();
 }
 
@@ -110,13 +110,13 @@ void angler_task() {
 		init_fish(*act_fish);
 		need_land = 0;
 	}
-	set_flg(COMPLETE_FLG, 0x02);
+	set_flg(DONE_FLG, 0x02);
 	ext_tsk();
 }
 
-void display_task() {
+void play_display_task() {
 	int tmp;
-	wai_flg(COMPLETE_FLG, 0x03, TWF_ANDW, &tmp);
+	wai_flg(DONE_FLG, 0x03, TWF_ANDW, &tmp);
 	display_lcd(2, lcdbuf);
 	clear_display();
 }
@@ -127,35 +127,54 @@ void display_task() {
 	ハンドラ
  ---------------------------- */
 void screen_handler() {
-	iact_tsk(DISPLAY_TASK);
 	if(screen == PLAY) {
+		iact_tsk(PLAY_DISPLAY_TASK);
 		iact_tsk(FISH_TASK);
 		iact_tsk(ANGLER_TASK);
+	} else if(screen == MENU) {
+		draw_menu();
+		display_lcd(2, lcdbuf);
+		clear_display();
+	} else if(screen == OVER) {
+		draw_msg("Starving...", 2);
+		draw_record("Total:  ", 3, total);
+		display_lcd(2, lcdbuf);
 	}
 }
 
 void switch_handler() {
 	// スイッチ1: 画面制御
-	if(get_key(START_SW) == ON) {
+	if(get_key(START_SW) == ON && screen != OVER) {
 		screen = PLAY;
-	} else {
+	} else if(screen != OVER) {
 		screen = MENU;
 	}
 
-  // スイッチ2: 釣り上げる
-	up_sw_current = get_key(UP_SW);
-	if(screen == PLAY && up_sw_current != up_sw_past && up_sw_current == ON) {
+  // スイッチ4: 釣り上げる
+	land_sw_current = get_key(LAND_SW);
+	if(screen == PLAY && land_sw_current != land_sw_past && land_sw_current == ON) {
 		need_land = 1;
 		iact_tsk(ANGLER_TASK);
 	}
-	up_sw_past = up_sw_current;
+	land_sw_past = land_sw_current;
+}
 
-	// land_sw_current = get_key(LAND_SW);
-	// if(land_sw_current != land_sw_past && land_sw_current == ON) {
-	// 	iact_tsk(ANGLER_TASK);
-	// }
-	// land_sw_past = land_sw_current;
-
+void hunger_handler() {
+	if(screen == PLAY) {
+		if(hunger > 0) {
+			hunger--;
+		} else {
+			if(pail > 0) {
+				while(hunger < HUNGER_MAX && pail > 0) {
+					pail--;
+					hunger++;
+				}
+			} else {
+				screen = OVER;
+				syslog_0(LOG_NOTICE, "over");
+			}
+		}
+	}
 }
 
 
@@ -164,25 +183,37 @@ void switch_handler() {
 	サブルーチン
  ---------------------------- */
 void init_fish(Fish *fish) {
-	fish->x = 14;
-	fish->direction = 1;
-	fish = &fish2;
+	SYSTIM time;
+	get_tim(&time);
+	if(time % 3 == 0) {
+		fish->x = 14;
+		fish->direction = 1;
+	} else {
+		fish->x = 32;
+		fish->direction = -1;
+	}
+	if(total % 5 == 0 && fish->level < 5) {
+		fish->level++;
+	}
 }
 
 int move_fish(Fish *fish) {
 	int isEat = 0;
 	if(fish->x == BAIT_X+16) isEat = 1;
-	else fish->x += fish->direction; // TODO 足すかどうかはランダム
+	SYSTIM time;
+	get_tim(&time);
+	if(time % 4 != 0) fish->x += fish->direction;
 	set_led(POW_LED, OFF);
 	return isEat;
 }
 
-void eat() {
+void eat(Fish *fish) {
 	set_led(POW_LED, ON);
 	VP_INT *tmp;
-	ER result = trcv_dtq(LAND_DTQ, tmp, 500);
+	int time_out = 500 / fish->level;
+	ER result = trcv_dtq(LAND_DTQ, tmp, time_out);
 	if(result == E_TMOUT) {
-		draw_msg("Miss");
+		draw_msg("Miss", 1);
 	}
 	set_led(POW_LED, OFF);
 }
@@ -190,10 +221,12 @@ void eat() {
 void land() {
 	ER result = tsnd_dtq(LAND_DTQ, (VP_INT)1, 0);
 	if(result == E_OK) {
-		draw_msg("Catch!");
+		draw_msg("Catch!", 1);
+		total++;
+		pail++;
 		set_led(TIMER_LED, ON);
 	} else if(result == E_TMOUT) {
-		draw_msg("Too early");
+		draw_msg("Too early", 1);
 	}
 }
 
@@ -218,20 +251,48 @@ void draw_fish(Fish *fish) {
 void draw_rod() {
 	lcdbuf[BAIT_X-4] = 0x5f;
 	lcdbuf[BAIT_X-3] = 0x5f;
-	lcdbuf[BAIT_X-2] = 0x5f;
+	lcdbuf[BAIT_X-2] = 0x26;
 	lcdbuf[BAIT_X-1] = 0x2f;
 	lcdbuf[BAIT_X] = 'J'; // 餌
 }
 
-void draw_msg(char *str) {
+void draw_menu() {
+	char hung[13] = "Hunger:     ";
+	int i;
+	for(i=7; i<7+hunger; i++) hung[i] = 0xff;
+	draw_msg(hung, 2);
+
+	draw_record("Pail:  ", 3, pail);
+	draw_record("Total:  ", 4, total);
+}
+
+void draw_msg(char *str, int p) {
 	int n = 0;
 	while(str[n] != '\0') n++;
-	int i = 15;
+	int i;
+	if(p == 1) i = 15;
+	else if(p == 2) i = n-1;
+	else if(p == 3) i = 16+n-1;
+	else if(p == 4) i = 31;
+
 	while(n > 0) {
 		lcdbuf[i] = str[n-1];
 		n--;
 		i--;
 	}
+}
+
+void draw_record(char *str, int p, int record) {
+	int n = 0;
+	while(str[n] != '\0') n++;
+	char s[n+1];
+	int i;
+	for(i=0; i<=n; i++) s[i] = str[i];
+	s[n+1] = '\0';
+	if(record > 9) s[n-2] = num_into_char[(int)record/10];
+	if(record == 0) s[n-1] = 0x30;
+	else s[n-1] = num_into_char[(record%10)];
+	draw_msg(s, p);
 }
 
 void clear_display() {
@@ -245,12 +306,27 @@ void clear_display() {
 
 /* メモ
 
-// TODO
-[] 画面遷移
-[] お金
-[] $0でゲームオーバー
-[] 餌レベル
-[] 魚挙動 TODO 足すかどうかはランダム
+- 遊び方
+- ルール
+
+- 操作方法
+
+
+- 赤いLEDが点灯したらスイッチ4をオンにして魚を釣る
+- 緑色のランプが点灯・Catch!と表示されたら成功
+	- Too early: 釣るのが早かった
+	- Miss: 釣るのが遅かった
+- 魚を釣るごとに魚のレベルが上がり、判定がどんどんシビアになる
+- 釣り人はお腹を空かす
+	- 1秒毎に満腹度が下がる
+	- 満腹度が0になったらバケツにあるだけ魚を食べる
+	- 魚は1つにつき1ゲージ開封
+	- 0になっても食べられなかったらゲームオーバー
+- メニュー画面
+	- Hunger: 満腹度 最大5
+	- Pail: バケツの中の魚の残量
+	- Total: 今まで釣った魚の数
+
 
 - スイッチ
 	- 1 画面操作
@@ -275,14 +351,10 @@ void clear_display() {
 		- 食べる
 		- 逃げる
 	- 釣り人(餌)
-		- 餌
-			- 安い/高い (j/J)
-			- 変更
-			- 
-			- 釣り上げる
-		- お金
-			- 餌代払う
-			- 0になったらgame over
+		- Hunger(満腹度)
+			- 最大値: 5
+			- 2秒ごとに減る
+	- 釣り上げる
 
 
 周期ハンドラを作成してタスクを呼び出す
@@ -305,9 +377,15 @@ void clear_display() {
 - スイッチ操作で餌の入れ替え
 	- 一旦魚は逃げる
 	- お金の操作
-魚は餌に近づくようにする
 	早く上げると逃げる
-魚を何種類か作成して、それぞれの魚の難易度・報酬を設定する
+
+魚ランダム
+	どっちから来るか
+	進むか
+	食べるか
+魚判定厳しく
+	0.5→0.4→0.3→0.2→0.1
+
 
 - LED
 	- 電源LED

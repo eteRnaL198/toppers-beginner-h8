@@ -50,7 +50,7 @@
 #define DEFAULT_MAIN_PRIORITY      8
 #define FISH_PRIORITY              9
 #define ANGLER_PRIORITY            9
-#define DISPLAY_PRIORITY           10
+#define PLAY_DISPLAY_PRIORITY           10
 
 /*
  *  ターゲットに依存する可能性のある定数の定義
@@ -74,6 +74,9 @@
 #define PLAY 1
 #define MENU 2
 #define OVER 3
+#define CLEAR 4
+
+#define HUNGER_MAX 5
 
 /*
  *  型宣言
@@ -89,19 +92,20 @@ typedef struct {
 extern void init_task();
 extern void fish_task();
 extern void angler_task();
-extern void display_task();
+extern void play_display_task();
 
 extern void screen_handler();
 extern void switch_handler();
+extern void hunger_handler();
 
 void init_fish(Fish*);
 int move_fish(Fish*);
-void eat();
+void eat(Fish*);
 void land();
 void blink_led(UB);
 void draw_fish(Fish*);
 void draw_rod();
-void draw_msg(char*);
+void draw_msg(char*, int);
 void clear_display();
 
 
