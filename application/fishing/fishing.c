@@ -184,7 +184,7 @@ void hunger_handler() {
 void init_fish(Fish *fish) {
 	SYSTIM time;
 	get_tim(&time);
-	if(time % 3 == 0) {
+	if((time / T_TICK) % 3 == 0) {
 		fish->x = 14;
 		fish->direction = 1;
 	} else {
@@ -201,7 +201,7 @@ int move_fish(Fish *fish) {
 	if(fish->x == BAIT_X+16) isEat = 1;
 	SYSTIM time;
 	get_tim(&time);
-	if(time % 4 != 0) fish->x += fish->direction;
+	if((time / T_TICK) % 7 != 0) fish->x += fish->direction;
 	set_led(POW_LED, OFF);
 	return isEat;
 }
